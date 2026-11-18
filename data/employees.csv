@@ -1,0 +1,41 @@
+employee_id,employee_name,department,role,approval_limit_inr,bank_account
+EMP-01,Rajesh Sharma,Finance,Chief Financial Officer,5000000,91201004567801
+EMP-02,Sneha Kulkarni,Finance,Finance Controller,1000000,91201004567802
+EMP-03,Amit Deshmukh,Finance,Senior Finance Manager,500000,91201004567803
+EMP-04,Priya Joshi,Finance,Treasury Manager,500000,91201004567804
+EMP-05,Rohan Patil,Finance,Finance Manager,50000,91201004567805
+EMP-06,Vikram Shinde,Finance,Assistant Accounts Manager,50000,91201004567806
+EMP-07,Neha Bhosale,Finance,Senior Accountant,0,91201004567807
+EMP-08,Sachin Jadhav,Finance,Accounts Payable Executive,0,91201004567808
+EMP-09,Ananya Pawar,Finance,Billing & Receivable Executive,0,91201004567809
+EMP-10,Sanjay Gaikwad,Finance,Junior Accountant,0,91201004567810
+EMP-11,Mahesh More,Procurement,Head of Procurement,500000,91201004567811
+EMP-12,Pooja Sawant,Procurement,Senior Procurement Manager,250000,91201004567812
+EMP-13,Nitin Chavan,Procurement,Procurement Manager - Raw Material,50000,91201004567813
+EMP-14,Sandeep Kale,Procurement,Procurement Manager - Consumables,50000,91201004567814
+EMP-15,Kavita Thorat,Procurement,Senior Sourcing Specialist,0,91201004567815
+EMP-16,Gaurav Salunkhe,Procurement,Vendor Development Officer,0,91201004567816
+EMP-17,Sunita Tambe,Procurement,Purchase Officer - Mechanical,0,91201004567817
+EMP-18,Deepak Mane,Procurement,Purchase Officer - Electrical,0,91201004567818
+EMP-19,Aparna Wagh,Procurement,Contracts Administrator,0,91201004567819
+EMP-20,Rahul Kadam,Procurement,Junior Buyer,0,91201004567820
+EMP-21,Swati Shetty,Operations,VP Operations & Plant Head,500000,91201004567821
+EMP-22,Manoj Nair,Operations,Operations Manager - CNC Shop,50000,91201004567822
+EMP-23,Shilpa Iyer,Operations,Operations Manager - Assembly,50000,91201004567823
+EMP-24,Vinod Rao,Operations,Maintenance Manager,50000,91201004567824
+EMP-25,Kishore Reddy,Operations,Quality Assurance Manager,50000,91201004567825
+EMP-26,Tanvi Verma,Operations,Production Planning Lead,0,91201004567826
+EMP-27,Ashok Agarwal,Operations,Senior CNC Programmer,0,91201004567827
+EMP-28,Meera Bhatia,Operations,Tool Room Supervisor,0,91201004567828
+EMP-29,Ajay Modi,Operations,Plant Maintenance Engineer,0,91201004567829
+EMP-30,Radha Shah,Operations,Quality Control Inspector,0,91201004567830
+EMP-31,Chetan Gupte,Operations,Heat Treatment Lead,0,91201004567831
+EMP-32,Varsha Soman,Operations,Shop Floor Supervisor,0,91201004567832
+EMP-33,Prashant Dixit,IT,Head of IT & Systems,500000,91201004567833
+EMP-34,Kiran Phadke,IT,IT Infrastructure Manager,50000,91201004567834
+EMP-35,Abhijit Bhave,IT,ERP Systems Administrator,0,91201004567835
+EMP-36,Pallavi Godbole,IT,Network Security Engineer,0,91201004567836
+EMP-37,Shrikant Pendse,IT,Database Administrator,0,91201004567837
+EMP-38,Jyoti Kelkar,IT,MES & SCADA Specialist,0,91201004567838
+EMP-39,Dhananjay Gore,IT,IT Systems Analyst,0,91201004567839
+EMP-40,Shruti Apte,IT,IT Helpdesk Specialist,0,91201004567840

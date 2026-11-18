@@ -1,0 +1,30 @@
+account_code,account_name,opening_balance,total_debit,total_credit,closing_balance
+1010,HDFC Bank Operating A/c,8500000.00,57674262.74,61604136.07,4570126.67
+1020,ICICI Bank Cash Credit A/c,4200000.00,0.00,0.00,4200000.00
+1100,Trade Receivables,18500000.00,25194322.11,39933933.17,3760388.94
+1200,Raw Materials Inventory,12000000.00,0.00,0.00,12000000.00
+1250,Work-in-Progress (WIP) Inventory,6500000.00,0.00,0.00,6500000.00
+1300,Finished Goods Inventory,9000000.00,0.00,0.00,9000000.00
+1500,Plant & Machinery,45000000.00,0.00,0.00,45000000.00
+1550,Accumulated Depreciation - Plant,-12000000.00,0.00,0.00,-12000000.00
+2010,Trade Payables,14500000.00,21731378.42,26702473.26,19471094.84
+2100,GST Payable,1800000.00,0.00,0.00,1800000.00
+2110,TDS Payable,450000.00,0.00,0.00,450000.00
+2200,Term Loan - HDFC Bank,25000000.00,0.00,0.00,25000000.00
+3010,Share Capital,20000000.00,0.00,0.00,20000000.00
+3020,Retained Earnings,29950000.00,0.00,0.00,29950000.00
+4010,Domestic Sales - Machined Components,0.00,0.00,27443925.19,27443925.19
+4020,Export Sales - Auto Ancillaries,0.00,0.00,9625762.04,9625762.04
+4090,Scrap & Metal Waste Sales,0.00,0.00,5864964.45,5864964.45
+5010,Raw Material Purchases - Steel & Alloys,0.00,18654507.34,0.00,18654507.34
+5020,Direct Labour & Subcontracting,0.00,4958336.07,0.00,4958336.07
+5030,"Power, Fuel & Utilities",0.00,5316886.35,0.00,5316886.35
+5040,Consumables & Cutting Tools,0.00,9991865.92,0.00,9991865.92
+6010,Salaries & Staff Welfare,0.00,6211206.30,0.00,6211206.30
+6020,Repairs & Maintenance - Machinery,0.00,4964840.59,0.00,4964840.59
+6030,Factory Rent & Rates,0.00,6042014.28,0.00,6042014.28
+6040,Freight & Logistics Charges,0.00,3939660.18,0.00,3939660.18
+6050,Plant & Machinery Insurance,0.00,0.00,0.00,0.00
+6060,Legal & Professional Fees,0.00,951500.00,0.00,951500.00
+6070,IT & ERP Software Subscriptions,0.00,5419413.88,0.00,5419413.88
+6080,Depreciation Expense,0.00,0.00,0.00,0.00
