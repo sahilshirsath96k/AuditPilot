@@ -1,0 +1,28 @@
+# Environment secrets (never commit API keys)
+.env
+*.env
+.env.*
+
+# Python virtual environments
+.venv/
+.venv_old/
+env/
+venv/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Audit logs & cryptographic trails (local runtime artifacts)
+audit_trail.jsonl
+*.log
+
+# ADK workspace cache
+.adk/
+
+# OS & IDE metadata
+.DS_Store
+.vscode/
+.idea/
