@@ -10,7 +10,7 @@ AuditPilot applies rule-based, evidence-driven audit tests to general ledger dat
 
 Internal financial audits typically require accountants to manually scan thousands of journal entries for anomalies such as duplicate payments, structured transactions, unauthorized approvals, and trial balance discrepancies. This is time-consuming and error-prone at scale.
 
-AuditPilot automates that work by running a pipeline of deterministic audit tools against a general ledger dataset. Each tool produces a uniform result containing flagged journal entry IDs, statistical metrics, and human-readable notes. A structured `DataProfile` output summarises the intake validation status and trial balance reconciliation result.
+AuditPilot automates selected financial audit procedures by running deterministic Python-based audit tools against a general ledger dataset. Each tool returns a structured result containing flagged journal entry IDs (where applicable), statistical metrics, and human-readable notes. The current implementation includes deterministic data intake, trial balance reconciliation, and a collection of standalone audit tools. A structured `DataProfile` summarises the intake validation status and trial balance reconciliation result.
 
 **Intended users:** Developers building financial audit automation, internal audit teams exploring agent-based tooling, and learners studying Google ADK multi-agent architecture.
 
@@ -150,7 +150,7 @@ All data in the `data/` directory is **entirely synthetic and fictional**. The c
 | File | Rows | Description |
 |------|------|-------------|
 | `ledger.csv` | 6,000 | General ledger journal entries for FY 2025–26 (April 2025 – March 2026). Contains planted anomalies across multiple categories. |
-| `trial_balance.csv` | 29 | Per-account debit and credit totals. Contains one planted discrepancy of ₹1,25,000 on account `JE-2025-2767`. |
+| `trial_balance.csv` | 29 | Per-account debit and credit totals. Contains a planted discrepancy of ₹1,25,000 in account `6020`, associated with flagged journal entry `JE-2025-2767`. |
 | `employees.csv` | 40 | Employee master: employee ID, name, department, role, delegated approval limit, and bank account. |
 | `vendors.csv` | 120 | Vendor master: vendor ID, name, GSTIN, PAN, and bank account. |
 | `financials.csv` | 12 | Monthly financial statements (revenue, COGS, OpEx, assets, liabilities). |
@@ -195,7 +195,6 @@ pip install -r requirements.txt
 Create the environment file that ADK reads at runtime:
 
 ```bash
-cp auditpilot/.env.example auditpilot/.env   # if an example file exists, otherwise:
 echo "GOOGLE_API_KEY=your_api_key_here" > auditpilot/.env
 ```
 
@@ -276,8 +275,8 @@ These principles are verified by the implemented code and test suite:
 
 | Principle | Implementation |
 |-----------|---------------|
-| **Deterministic financial calculations** | All numeric results come from `auditpilot/tools/` functions. The LLM summarises findings; it never calculates or estimates financial figures. |
-| **Evidence traceability** | Every tool finding includes the specific `entry_id` values that triggered it. No finding is reported without a cited journal entry. |
+| **Deterministic financial calculations** | All implemented audit calculations and intake classifications are performed by deterministic Python functions in `auditpilot/tools/` and `auditpilot/schemas.py`. Future LLM-powered components must use verified tool outputs rather than independently calculating or estimating financial figures. |
+| **Evidence traceability** | Anomaly and compliance tools identify relevant journal entry IDs through `flagged_ids`. Aggregate financial ratio calculations return financial metrics rather than individual journal entry findings. |
 | **Untrusted ledger text** | Ledger `description` and free-text fields are treated as data, never as instructions. Verified by `test_intake_adversarial_prompt_injection_without_gemini`. |
 | **User-message path isolation** | File paths are configured only through ADK session state or hardcoded defaults — never parsed from user message text. Verified by `test_user_message_csv_path_does_not_override_configured_path`. |
 | **Fail-closed validation** | Missing fields, non-boolean flags, NaN or infinite numerics, and inconsistent tool results all produce `FAILED`. The agent never defaults a missing field to a passing value. |
