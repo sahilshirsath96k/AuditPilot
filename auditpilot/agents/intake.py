@@ -34,17 +34,6 @@ class IntakeAgent(BaseAgent):
         if state.get("trial_balance_path"):
             tb_path = state["trial_balance_path"]
 
-        # Also inspect user input content for custom CSV paths if present
-        if ctx.user_content and ctx.user_content.parts:
-            user_text = " ".join([p.text for p in ctx.user_content.parts if p.text])
-            for token in user_text.split():
-                token_clean = token.strip("',\"();")
-                if token_clean.endswith(".csv"):
-                    if "trial" in token_clean.lower() or "tb" in token_clean.lower():
-                        tb_path = token_clean
-                    else:
-                        ledger_path = token_clean
-
         # Deterministic tool executions (pure Python, zero LLM estimation)
         ledger_res = load_ledger(ledger_path=ledger_path)
         tb_res = check_trial_balance(ledger_path=ledger_path, tb_path=tb_path)

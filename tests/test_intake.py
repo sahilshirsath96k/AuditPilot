@@ -142,18 +142,22 @@ def test_deterministic_runtime_runner_execution_real_data():
 
 
 def test_deterministic_runtime_runner_execution_broken_csv():
-    """Execute pipeline via ADK Runner on broken CSV and assert runtime FAILED status."""
+    """Execute pipeline via ADK Runner on broken CSV configured via session state; assert runtime FAILED."""
     async def _run():
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             tmp_path = f.name
         try:
             pd.read_csv("data/ledger.csv").drop(columns=["amount_inr"]).head(20).to_csv(tmp_path, index=False)
             svc = InMemorySessionService()
-            await svc.create_session(app_name="auditpilot", user_id="u", session_id="s2")
+            # Configure the broken CSV path through session state — not through the user message.
+            await svc.create_session(
+                app_name="auditpilot", user_id="u", session_id="s2",
+                state={"ledger_path": tmp_path},
+            )
             runner = Runner(agent=root_agent, session_service=svc, app_name="auditpilot")
             async for _ in runner.run_async(
                 user_id="u", session_id="s2",
-                new_message=types.Content(role="user", parts=[types.Part.from_text(text=f"audit {tmp_path}")])
+                new_message=types.Content(role="user", parts=[types.Part.from_text(text="start audit")])
             ):
                 pass
             sess = await svc.get_session(app_name="auditpilot", user_id="u", session_id="s2")
@@ -164,6 +168,46 @@ def test_deterministic_runtime_runner_execution_broken_csv():
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+    asyncio.run(_run())
+
+
+def test_user_message_csv_path_does_not_override_configured_path():
+    """Security: mentioning a CSV path in the user message must not override the default or session-state paths."""
+    async def _run():
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
+            decoy_path = f.name
+        try:
+            # Write a broken ledger to the decoy path (missing amount_inr).
+            pd.read_csv("data/ledger.csv").drop(columns=["amount_inr"]).head(20).to_csv(decoy_path, index=False)
+            svc = InMemorySessionService()
+            # No session-state override — agent should use the real default data/ledger.csv.
+            await svc.create_session(app_name="auditpilot", user_id="u", session_id="s_sec")
+            runner = Runner(agent=root_agent, session_service=svc, app_name="auditpilot")
+            # Mention the decoy path in the user message; the agent must ignore it.
+            async for _ in runner.run_async(
+                user_id="u", session_id="s_sec",
+                new_message=types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=f"start audit {decoy_path}")]
+                ),
+            ):
+                pass
+            sess = await svc.get_session(app_name="auditpilot", user_id="u", session_id="s_sec")
+            dp = sess.state.get("data_profile")
+            assert dp is not None
+            # The real default data/ledger.csv is valid → must NOT be FAILED due to the decoy.
+            assert dp["status"] != "FAILED", (
+                f"User-message path injection changed the audit result to FAILED. "
+                f"Failure reasons: {dp.get('failure_reasons')}"
+            )
+            # Confirm the real dataset row count was processed, not the 20-row decoy.
+            assert dp["row_count"] == 6000, (
+                f"Row count {dp['row_count']} suggests the decoy CSV was loaded instead of the default."
+            )
+        finally:
+            if os.path.exists(decoy_path):
+                os.remove(decoy_path)
 
     asyncio.run(_run())
 
