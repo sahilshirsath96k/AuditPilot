@@ -56,12 +56,13 @@ def benford_test(
 
     # Use non-zero debit entries (or primary operational entries where debit_inr > 0)
     # to avoid double-counting both legs of every transaction
-    pos_mask = debit_num > 0
-    if not pos_mask.any():
-        pos_mask = amount_num > 0
+
+    # Use debit values when available; otherwise fall back to transaction amounts.
+    values = debit_num if (debit_num > 0).any() else amount_num
+    pos_mask = values > 0
 
     pos_entries = ledger[pos_mask].copy()
-    pos_entries["val_num"] = debit_num[pos_mask]
+    pos_entries["val_num"] = values[pos_mask]
 
     # Extract first significant digit
     def extract_first_digit(val: float) -> int:

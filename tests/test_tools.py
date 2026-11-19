@@ -23,6 +23,7 @@ from auditpilot.tools import (
     load_ledger,
     ratio_table,
     vendor_bank_overlap,
+    retrieve_policy,
 )
 
 GROUND_TRUTH_PATH = "data/ground_truth.csv"
@@ -268,6 +269,25 @@ def test_benford_test_statistics():
     assert 5 in stats["anomalous_digits"] or "5" in stats["digits"]
     assert len(res["flagged_ids"]) > 0
 
+def test_benford_test_falls_back_to_amount_column(tmp_path: Path):
+    """Benford analysis must use amount_inr when all debit values are zero."""
+    ledger = pd.DataFrame({
+        "entry_id": [f"TEST-{i}" for i in range(1, 11)],
+        "debit_inr": [0] * 10,
+        "amount_inr": [
+            120, 230, 340, 450, 560,
+            670, 780, 890, 910, 1250,
+        ],
+    })
+
+    ledger_path = tmp_path / "fallback_ledger.csv"
+    ledger.to_csv(ledger_path, index=False)
+
+    result = benford_test(str(ledger_path))
+
+    assert result["test"] == "benford_test"
+    assert result["stats"]["sample_size"] == 10
+
 
 def test_find_duplicates(ground_truth_df: pd.DataFrame):
     """find_duplicates must identify all duplicate vendor disbursements within 5 days."""
@@ -433,3 +453,25 @@ def test_all_targeted_anomaly_categories_recall_benchmark(ground_truth_df: pd.Da
 
     for cat, metrics in recall_report.items():
         assert metrics["recall"] >= 0.90
+
+
+def test_retrieve_policy_self_approval():
+    results = retrieve_policy("self approval and segregation of duties", k=3)
+    assert results
+    assert results[0]["clause_id"] == "3.1"
+
+
+def test_retrieve_policy_gstin():
+    results = retrieve_policy("vendor GSTIN verification", k=3)
+    assert results
+    assert results[0]["clause_id"] == "5.1"
+
+
+def test_retrieve_policy_approval_tiers():
+    results = retrieve_policy("financial delegated authority approval limits", k=3)
+    assert results
+    assert any(result["clause_id"] in {"2.1", "2.2", "2.3"} for result in results)
+
+
+def test_retrieve_policy_empty_query():
+    assert retrieve_policy("") == []

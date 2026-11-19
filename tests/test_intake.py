@@ -158,7 +158,7 @@ def test_deterministic_runtime_runner_execution_real_data():
     async def _run():
         svc = InMemorySessionService()
         await svc.create_session(app_name="auditpilot", user_id="u", session_id="s1")
-        runner = Runner(agent=root_agent, session_service=svc, app_name="auditpilot")
+        runner = Runner(agent=intake_agent, session_service=svc, app_name="auditpilot")
         async for _ in runner.run_async(
             user_id="u", session_id="s1",
             new_message=types.Content(role="user", parts=[types.Part.from_text(text="start audit")])
@@ -194,7 +194,7 @@ def test_deterministic_runtime_runner_execution_broken_csv():
                 app_name="auditpilot", user_id="u", session_id="s2",
                 state={"ledger_path": tmp_path},
             )
-            runner = Runner(agent=root_agent, session_service=svc, app_name="auditpilot")
+            runner = Runner(agent=intake_agent, session_service=svc, app_name="auditpilot")
             async for _ in runner.run_async(
                 user_id="u", session_id="s2",
                 new_message=types.Content(role="user", parts=[types.Part.from_text(text="start audit")])
@@ -223,7 +223,7 @@ def test_user_message_csv_path_does_not_override_configured_path():
             svc = InMemorySessionService()
             # No session-state override — agent should use the real default data/ledger.csv.
             await svc.create_session(app_name="auditpilot", user_id="u", session_id="s_sec")
-            runner = Runner(agent=root_agent, session_service=svc, app_name="auditpilot")
+            runner = Runner(agent=intake_agent, session_service=svc, app_name="auditpilot")
             # Mention the decoy path in the user message; the agent must ignore it.
             async for _ in runner.run_async(
                 user_id="u", session_id="s_sec",
