@@ -36,7 +36,7 @@ from auditpilot.agents.intake import intake_agent
 from auditpilot.schemas import DataProfile, build_data_profile
 from auditpilot.tools.data_tools import load_ledger
 from auditpilot.tools.reconciliation import check_trial_balance
-
+from auditpilot.router import classify_request
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 
@@ -105,11 +105,51 @@ def test_intake_agent_configuration():
 
 
 def test_audit_lead_and_root_agent():
-    """Verify audit_lead is a SequentialAgent containing intake_agent and root_agent export."""
-    assert root_agent is audit_lead
+    """Verify the router is the root agent and audit_lead contains intake_agent."""
+    from auditpilot.router import router_agent
+
+    assert root_agent is router_agent
+    assert root_agent.name == "request_router"
     assert audit_lead.name == "audit_lead"
     assert audit_lead.sub_agents[0] is intake_agent
 
+# ── Deterministic request router tests ───────────────────────────────
+
+@pytest.mark.parametrize(
+    "message",
+    ["hi", "hello", "hey", "good morning"],
+)
+def test_router_recognizes_greetings(message):
+    assert classify_request(message) == "greeting"
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["help", "what can you do?", "show help"],
+)
+def test_router_recognizes_help(message):
+    assert classify_request(message) == "help"
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["start audit", "run audit", "run financial checks"],
+)
+def test_router_recognizes_explicit_audit_requests(message):
+    assert classify_request(message) == "audit"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "don't start audit",
+        "I do not want to run audit",
+        "tell me about auditing",
+        "hello, how are you?",
+    ],
+)
+def test_router_does_not_trigger_audit_for_unrelated_requests(message):
+    assert classify_request(message) != "audit"
 
 # ── ADK Runner integration (no Gemini API calls) ──────────────────────────────
 
