@@ -13,7 +13,7 @@ agent_loader = AgentLoader(agents_dir=str(AGENT_DIR))
 app: FastAPI = get_fast_api_app(
     agents_dir=str(AGENT_DIR),
     agent_loader=agent_loader,
-    web=False,
+    web=True,
     port=8080,
     reload_agents=False,
 )
