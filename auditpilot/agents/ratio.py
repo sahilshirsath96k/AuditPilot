@@ -2,6 +2,7 @@
 
 from google.adk.agents import LlmAgent
 
+from auditpilot.callbacks import after_tool_audit_logger, before_model_guardrail
 from auditpilot.models import get_gemini_model
 from auditpilot.tools import ratio_table as _ratio_table
 
@@ -44,4 +45,6 @@ If the tool detects no issues, report that result accurately.
 """,
     tools=[ratio_table],
     output_key="ratio_findings",
+    before_model_callback=[before_model_guardrail],
+    after_tool_callback=[after_tool_audit_logger],
 )

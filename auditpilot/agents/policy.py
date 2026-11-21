@@ -3,6 +3,7 @@
 
 from google.adk.agents import LlmAgent
 
+from auditpilot.callbacks import after_tool_audit_logger, before_model_guardrail
 from auditpilot.models import get_gemini_model
 from auditpilot.tools import (
     retrieve_policy as _retrieve_policy,
@@ -58,4 +59,6 @@ Present findings clearly and support every conclusion with evidence.
 """,
     tools=[retrieve_policy, check_approval_limits],
     output_key="policy_findings",
+    before_model_callback=[before_model_guardrail],
+    after_tool_callback=[after_tool_audit_logger],
 )

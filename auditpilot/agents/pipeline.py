@@ -14,6 +14,9 @@ from auditpilot.agents.anomaly import anomaly_agent
 from auditpilot.agents.vendor import vendor_agent
 from auditpilot.agents.ratio import ratio_agent
 from auditpilot.agents.policy import policy_agent
+from auditpilot.agents.risk import risk_agent
+from auditpilot.agents.skeptic import skeptic_loop
+from auditpilot.agents.report import report_agent
 
 specialists = ParallelAgent(
     name="specialists",
@@ -88,6 +91,17 @@ class SpecialistGateAgent(BaseAgent):
         async for event in policy_agent.run_async(ctx):
             yield event
 
+        # Rank all audit findings after policy analysis.
+        async for event in risk_agent.run_async(ctx):
+            yield event
+
+        # Independently review ranked findings for evidence and valid IDs.
+        async for event in skeptic_loop.run_async(ctx):
+            yield event
+
+        # Synthesize the formal audit memorandum in DRAFT status.
+        async for event in report_agent.run_async(ctx):
+            yield event
 
 specialist_gate = SpecialistGateAgent(
     name="specialist_gate",
@@ -98,7 +112,10 @@ specialist_gate = SpecialistGateAgent(
 
 audit_lead = SequentialAgent(
     name="audit_lead",
-    description="Runs intake validation, parallel specialists, and policy compliance.",
+    description=(
+        "Runs intake, parallel specialists, policy compliance, risk ranking, "
+        "skeptic review, and draft audit memorandum synthesis."
+    ),
     sub_agents=[
         intake_agent,
         specialist_gate,

@@ -59,10 +59,15 @@ def check_approval_limits(
     self_app_summary = (
         ledger[self_app_mask]
         .groupby(["posted_by", "approved_by"])
-        .agg(count=("entry_id", "count"), total_inr=("amount_inr", "sum"))
+        .agg(
+            count=("entry_id", "count"),
+            transaction_count=("debit_inr", lambda x: int((x > 0).sum())),
+            total_inr=("debit_inr", "sum"),
+        )
         .reset_index()
         .to_dict("records")
     )
+
 
     over_limit_summary = (
         ledger[over_limit_mask]
@@ -75,6 +80,12 @@ def check_approval_limits(
     stats = {
         "total_entries_checked": int(len(ledger)),
         "self_approved_count": int(len(self_app_entries)),
+        "self_approved_transaction_count": int(
+            sum(item["transaction_count"] for item in self_app_summary)
+        ),
+        "self_approved_exposure_inr": float(
+            sum(item["total_inr"] for item in self_app_summary)
+        ),
         "over_limit_count": int(len(over_limit_entries)),
         "unique_flagged_count": int(len(flagged_ids)),
         "self_approved_summary": self_app_summary,

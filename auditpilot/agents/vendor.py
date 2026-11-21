@@ -2,6 +2,7 @@
 
 from google.adk.agents import LlmAgent
 
+from auditpilot.callbacks import after_tool_audit_logger, before_model_guardrail
 from auditpilot.models import get_gemini_model
 from auditpilot.tools import vendor_bank_overlap as _vendor_bank_overlap
 
@@ -42,4 +43,6 @@ If the tool detects no issues, report that result accurately.
 """,
     tools=[vendor_bank_overlap],
     output_key="vendor_findings",
+    before_model_callback=[before_model_guardrail],
+    after_tool_callback=[after_tool_audit_logger],
 )

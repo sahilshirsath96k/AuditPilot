@@ -66,10 +66,87 @@ class DataProfile(BaseModel):
         default_factory=list,
         description="Journal entry IDs identified during intake (e.g. trial balance gap candidates).",
     )
+    trial_balance_discrepancies: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Account-level discrepancies returned by the trial balance reconciliation tool.",
+    )
     notes: str = Field(
         ...,
         description="Detailed summary notes explaining validation and reconciliation findings.",
     )
+
+class Finding(BaseModel):
+    """Structured audit finding with likelihood and impact scoring."""
+
+    id: str
+    category: str
+    title: str
+
+    entry_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Journal entry IDs supporting this finding.",
+    )
+
+    evidence: list[str] = Field(default_factory=list)
+
+    amount_at_risk_inr: float = Field(
+        default=0.0,
+        ge=0,
+        description="Financial exposure calculated by a deterministic tool.",
+    )
+
+    likelihood: int = Field(
+        ...,
+        ge=1,
+        le=5,
+        description="Likelihood of the identified risk, from 1 to 5.",
+    )
+
+    impact: int = Field(
+        ...,
+        ge=1,
+        le=5,
+        description="Impact of the identified risk, from 1 to 5.",
+    )
+
+    score: int = Field(
+        default=0,
+        ge=0,
+        le=25,
+        description="Deterministic risk score: likelihood multiplied by impact.",
+    )
+
+    rationale: str
+    review_reason: str | None = None
+
+    status: Literal[
+        "pending",
+        "confirmed",
+        "needs_evidence",
+        "dropped",
+    ] = "pending"
+
+
+class RankedFindings(BaseModel):
+    """Structured collection of ranked audit findings."""
+
+    findings: list[Finding]
+    total_findings: int = Field(ge=0)
+    total_amount_at_risk_inr: float = Field(ge=0)
+
+class SkepticReview(BaseModel):
+    """Skeptic's review decision for one audit finding."""
+
+    finding_id: str
+    status: Literal["confirmed", "needs_evidence", "dropped"]
+    review_reason: str
+
+
+class SkepticReviewBatch(BaseModel):
+    """Collection of skeptic decisions for the ranked findings."""
+
+    reviews: list[SkepticReview]
 
 
 def _require_finite_non_negative(
@@ -421,5 +498,10 @@ def build_data_profile(
         trial_balance_reconciled=reconciled if isinstance(reconciled, bool) else None,
         trial_balance_gap_inr=float(total_discrepancy) if discrepancy_ok else None,
         flagged_ids=flagged_ids,
-        notes=combined_notes,
+        trial_balance_discrepancies=(
+        tb_res.get("stats", {}).get("discrepancies", [])
+       if isinstance(tb_res, dict) and isinstance(tb_res.get("stats"), dict)
+        else []
+    ),
+    notes=combined_notes,
     )

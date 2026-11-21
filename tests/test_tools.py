@@ -25,6 +25,7 @@ from auditpilot.tools import (
     vendor_bank_overlap,
     retrieve_policy,
 )
+from auditpilot.tools.risk_tools import build_ranked_findings
 
 GROUND_TRUTH_PATH = "data/ground_truth.csv"
 
@@ -475,3 +476,433 @@ def test_retrieve_policy_approval_tiers():
 
 def test_retrieve_policy_empty_query():
     assert retrieve_policy("") == []
+
+# =====================================================================
+# 4. Phase 6: Risk Ranking Tests
+# =====================================================================
+
+def test_build_ranked_findings_returns_valid_structure():
+    result = build_ranked_findings()
+
+    assert "findings" in result
+    assert result["total_findings"] == len(result["findings"])
+    assert result["total_amount_at_risk_inr"] >= 0
+
+
+def test_ranked_findings_are_sorted_by_score():
+    result = build_ranked_findings()
+    findings = result["findings"]
+
+    scores = [finding["score"] for finding in findings]
+
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_every_ranked_finding_has_valid_entry_ids():
+    result = build_ranked_findings()
+    ledger = pd.read_csv("data/ledger.csv")
+
+    valid_ids = set(ledger["entry_id"])
+
+    for finding in result["findings"]:
+        assert finding["entry_ids"]
+        assert set(finding["entry_ids"]).issubset(valid_ids)
+
+
+def test_ranked_findings_have_valid_risk_scores():
+    result = build_ranked_findings()
+
+    for finding in result["findings"]:
+        assert 1 <= finding["likelihood"] <= 5
+        assert 1 <= finding["impact"] <= 5
+        assert finding["score"] == finding["likelihood"] * finding["impact"]
+        assert finding["amount_at_risk_inr"] >= 0
+
+
+# =====================================================================
+# 5. Phase 7: Skeptic Verification Tests
+# =====================================================================
+
+def test_verify_entry_ids_accepts_existing_ids():
+    from auditpilot.tools.skeptic_tools import verify_entry_ids
+
+    result = verify_entry_ids(["JE-2025-0249"])
+
+    assert result["test"] == "verify_entry_ids"
+    assert result["is_valid"] is True
+    assert result["valid_ids"] == ["JE-2025-0249"]
+    assert result["missing_ids"] == []
+    assert result["stats"]["valid_count"] == 1
+
+
+def test_verify_entry_ids_detects_nonexistent_ids():
+    from auditpilot.tools.skeptic_tools import verify_entry_ids
+
+    result = verify_entry_ids([
+        "JE-2025-0249",
+        "INVALID-JE-9999",
+    ])
+
+    assert result["is_valid"] is False
+    assert result["valid_ids"] == ["JE-2025-0249"]
+    assert result["missing_ids"] == ["INVALID-JE-9999"]
+    assert result["stats"]["provided_count"] == 2
+    assert result["stats"]["valid_count"] == 1
+    assert result["stats"]["missing_count"] == 1
+# =====================================================================
+# 6. Phase 7: Skeptic Controller Tests
+# =====================================================================
+
+def test_skeptic_drops_finding_with_invalid_entry_id():
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    ranked = {
+        "findings": [{
+            "id": "TEST-001",
+            "entry_ids": ["INVALID-JE-9999"],
+            "amount_at_risk_inr": 50000,
+            "likelihood": 4,
+            "impact": 3,
+            "score": 12,
+            "status": "pending",
+        }]
+    }
+
+    reviews = {
+        "reviews": [{
+            "finding_id": "TEST-001",
+            "status": "confirmed",
+            "review_reason": "Evidence appears valid.",
+        }]
+    }
+
+    result = apply_skeptic_reviews(ranked, reviews)
+    finding = result["findings"][0]
+
+    assert finding["status"] == "dropped"
+    assert "verification failed" in finding["review_reason"].lower()
+
+
+def test_skeptic_confirms_finding_with_valid_entry_id():
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    ranked = {
+        "findings": [{
+            "id": "TEST-002",
+            "entry_ids": ["JE-2025-0249"],
+            "amount_at_risk_inr": 50000,
+            "likelihood": 4,
+            "impact": 3,
+            "score": 12,
+            "status": "pending",
+        }]
+    }
+
+    reviews = {
+        "reviews": [{
+            "finding_id": "TEST-002",
+            "status": "confirmed",
+            "review_reason": "The evidence supports the control exception.",
+        }]
+    }
+
+    result = apply_skeptic_reviews(ranked, reviews)
+
+    assert result["findings"][0]["status"] == "confirmed"
+
+
+def test_skeptic_preserves_risk_calculations():
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    ranked = {
+        "findings": [{
+            "id": "TEST-003",
+            "entry_ids": ["JE-2025-0249"],
+            "amount_at_risk_inr": 75000,
+            "likelihood": 5,
+            "impact": 4,
+            "score": 20,
+            "status": "pending",
+        }]
+    }
+
+    reviews = {
+        "reviews": [{
+            "finding_id": "TEST-003",
+            "status": "confirmed",
+            "review_reason": "Evidence supports the finding.",
+        }]
+    }
+
+    result = apply_skeptic_reviews(ranked, reviews)
+    finding = result["findings"][0]
+
+    assert finding["amount_at_risk_inr"] == 75000
+    assert finding["likelihood"] == 5
+    assert finding["impact"] == 4
+    assert finding["score"] == 20
+
+
+def test_skeptic_preserves_completed_decisions():
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    ranked = {
+        "findings": [{
+            "id": "TEST-004",
+            "entry_ids": ["JE-2025-0249"],
+            "status": "confirmed",
+            "review_reason": "Previously confirmed.",
+        }]
+    }
+
+    result = apply_skeptic_reviews(ranked, {"reviews": []})
+
+    assert result["findings"][0]["status"] == "confirmed"
+    assert result["findings"][0]["review_reason"] == "Previously confirmed."
+
+
+def test_skeptic_retains_dropped_findings_with_reasons():
+    """Verify dropped findings remain in findings list (not silently deleted) with reasons."""
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    ranked = {
+        "findings": [
+            {
+                "id": "DROP-001",
+                "entry_ids": ["INVALID-ID-001"],
+                "amount_at_risk_inr": 25000,
+                "status": "pending",
+            },
+            {
+                "id": "DROP-002",
+                "entry_ids": ["JE-2025-0249"],
+                "amount_at_risk_inr": 30000,
+                "status": "pending",
+            },
+        ],
+        "total_findings": 2,
+        "total_amount_at_risk_inr": 55000,
+    }
+
+    reviews = {
+        "reviews": [
+            {
+                "finding_id": "DROP-002",
+                "status": "dropped",
+                "review_reason": "Legitimate business purpose established by procurement memo.",
+            }
+        ]
+    }
+
+    result = apply_skeptic_reviews(ranked, reviews)
+    findings = result["findings"]
+
+    # Both findings must be retained in the list — none silently removed
+    assert len(findings) == 2
+    assert findings[0]["id"] == "DROP-001"
+    assert findings[0]["status"] == "dropped"
+    assert "verification failed" in findings[0]["review_reason"].lower()
+
+    assert findings[1]["id"] == "DROP-002"
+    assert findings[1]["status"] == "dropped"
+    assert "procurement memo" in findings[1]["review_reason"]
+
+
+def test_apply_skeptic_reviews_handles_pydantic_model():
+    """Verify apply_skeptic_reviews safely accepts Pydantic RankedFindings instances."""
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+    from auditpilot.schemas import Finding, RankedFindings
+
+    ranked_model = RankedFindings(
+        findings=[
+            Finding(
+                id="MOD-001",
+                category="compliance",
+                title="Self-approved entry",
+                entry_ids=["JE-2025-0249"],
+                amount_at_risk_inr=15000.0,
+                likelihood=3,
+                impact=3,
+                score=9,
+                rationale="Maker equals checker.",
+            )
+        ],
+        total_findings=1,
+        total_amount_at_risk_inr=15000.0,
+    )
+
+    reviews = {
+        "reviews": [
+            {
+                "finding_id": "MOD-001",
+                "status": "confirmed",
+                "review_reason": "SoD violation confirmed by employee record.",
+            }
+        ]
+    }
+
+    result = apply_skeptic_reviews(ranked_model, reviews)
+    assert isinstance(result, dict)
+    assert len(result["findings"]) == 1
+    assert result["findings"][0]["status"] == "confirmed"
+
+
+def test_skeptic_loop_configuration():
+    """Verify skeptic_loop configuration and max_iterations constraint from specification."""
+    from auditpilot.agents.skeptic import skeptic_agent, skeptic_loop
+    from auditpilot.agents.skeptic_controller import skeptic_controller
+
+    assert skeptic_loop.name == "skeptic_loop"
+    assert skeptic_loop.max_iterations == 3
+    assert len(skeptic_loop.sub_agents) == 2
+    assert skeptic_loop.sub_agents[0] is skeptic_agent
+    assert skeptic_loop.sub_agents[1] is skeptic_controller
+
+
+def test_skeptic_controller_escalates_when_all_findings_resolved():
+    """Verify SkepticControllerAgent sets escalate=True when 0 findings need evidence."""
+    import asyncio
+    from unittest.mock import MagicMock
+    from google.adk.agents.invocation_context import InvocationContext
+    from google.adk.sessions import Session
+    from auditpilot.agents.skeptic_controller import skeptic_controller
+
+    async def _test():
+        session = Session(
+            id="sess_resolved",
+            app_name="auditpilot",
+            user_id="user_test",
+            state={
+                "ranked_findings": {
+                    "findings": [{
+                        "id": "F-RESOLVED",
+                        "entry_ids": ["JE-2025-0249"],
+                        "amount_at_risk_inr": 5000,
+                        "likelihood": 2,
+                        "impact": 2,
+                        "score": 4,
+                        "status": "pending",
+                        "rationale": "Sample check",
+                    }],
+                    "total_findings": 1,
+                    "total_amount_at_risk_inr": 5000,
+                },
+                "skeptic_reviews": {
+                    "reviews": [{
+                        "finding_id": "F-RESOLVED",
+                        "status": "confirmed",
+                        "review_reason": "Verified and supported.",
+                    }]
+                },
+            },
+        )
+        ctx = MagicMock(spec=InvocationContext)
+        ctx.session = session
+        ctx.invocation_id = "inv_001"
+        ctx.branch = "main"
+
+        events = []
+        async for event in skeptic_controller._run_async_impl(ctx):
+            events.append(event)
+
+        assert len(events) == 1
+        event = events[0]
+        # escalate=True terminates LoopAgent execution
+        assert event.actions.escalate is True
+        assert event.actions.state_delta["ranked_findings"]["findings"][0]["status"] == "confirmed"
+        assert event.actions.state_delta["skeptic_review_rounds"] == 1
+
+    asyncio.run(_test())
+
+
+def test_skeptic_controller_continues_when_needs_evidence_exists():
+    """Verify SkepticControllerAgent sets escalate=False when findings still need evidence."""
+    import asyncio
+    from unittest.mock import MagicMock
+    from google.adk.agents.invocation_context import InvocationContext
+    from google.adk.sessions import Session
+    from auditpilot.agents.skeptic_controller import skeptic_controller
+
+    async def _test():
+        session = Session(
+            id="sess_continue",
+            app_name="auditpilot",
+            user_id="user_test",
+            state={
+                "ranked_findings": {
+                    "findings": [{
+                        "id": "F-UNRESOLVED",
+                        "entry_ids": ["JE-2025-0249"],
+                        "amount_at_risk_inr": 8000,
+                        "likelihood": 3,
+                        "impact": 3,
+                        "score": 9,
+                        "status": "pending",
+                        "rationale": "Needs more documentation",
+                    }],
+                    "total_findings": 1,
+                    "total_amount_at_risk_inr": 8000,
+                },
+                "skeptic_reviews": {
+                    "reviews": [{
+                        "finding_id": "F-UNRESOLVED",
+                        "status": "needs_evidence",
+                        "review_reason": "Secondary invoice required.",
+                    }]
+                },
+            },
+        )
+        ctx = MagicMock(spec=InvocationContext)
+        ctx.session = session
+        ctx.invocation_id = "inv_002"
+        ctx.branch = "main"
+
+        events = []
+        async for event in skeptic_controller._run_async_impl(ctx):
+            events.append(event)
+
+        assert len(events) == 1
+        event = events[0]
+        # escalate=False allows LoopAgent to perform the next iteration
+        assert event.actions.escalate is False
+        assert event.actions.state_delta["ranked_findings"]["findings"][0]["status"] == "needs_evidence"
+        assert event.actions.state_delta["skeptic_review_rounds"] == 1
+
+    asyncio.run(_test())
+
+
+def test_skeptic_controller_preserves_risk_and_finding_fields_intact():
+    """Verify all non-status fields (amount, likelihood, impact, score, rationale) are strictly preserved."""
+    from auditpilot.agents.skeptic_controller import apply_skeptic_reviews
+
+    original_finding = {
+        "id": "PRESERVE-001",
+        "category": "vendor",
+        "title": "Vendor Bank Overlap",
+        "entry_ids": ["JE-2025-0249"],
+        "evidence": ["Vendor VND-001 bank account matches EMP-05"],
+        "amount_at_risk_inr": 123456.78,
+        "likelihood": 5,
+        "impact": 4,
+        "score": 20,
+        "rationale": "High-risk conflict of interest.",
+        "status": "pending",
+    }
+    ranked = {"findings": [dict(original_finding)]}
+    reviews = {
+        "reviews": [{
+            "finding_id": "PRESERVE-001",
+            "status": "confirmed",
+            "review_reason": "Cross-verified with HR employee master.",
+        }]
+    }
+
+    result = apply_skeptic_reviews(ranked, reviews)
+    updated = result["findings"][0]
+
+    for key, expected_val in original_finding.items():
+        if key == "status":
+            assert updated["status"] == "confirmed"
+        else:
+            assert updated[key] == expected_val
+    assert updated["review_reason"] == "Cross-verified with HR employee master."

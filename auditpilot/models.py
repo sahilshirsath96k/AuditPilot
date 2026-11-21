@@ -1,9 +1,12 @@
 """Gemini model factory and configuration for AuditPilot agents."""
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from google.adk.models.google_llm import Gemini
 from google.genai.types import HttpRetryOptions
 
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 def get_gemini_model(model_name: str | None = None) -> Gemini:
     """Configures a Gemini model instance with automatic backoff retry on 503/429 spikes.

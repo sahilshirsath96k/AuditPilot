@@ -42,6 +42,15 @@ def classify_request(message: str) -> str:
     if any(normalized.startswith(phrase) for phrase in negative_phrases):
         return "unknown"
 
+    if normalized in {"approve", "approve memo", "sign off", "sign off memo"}:
+        return "sign_off_approve"
+
+    if normalized in {"reject", "reject memo"}:
+        return "sign_off_reject"
+
+    if normalized in {"request changes", "request_changes"}:
+        return "sign_off_request_changes"
+
     audit_phrases = {
         "start audit",
         "run audit",
@@ -71,6 +80,21 @@ class RouterAgent(BaseAgent):
             )
 
         request_type = classify_request(message)
+
+        if request_type.startswith("sign_off_"):
+            decision = request_type.replace("sign_off_", "").upper()
+            from auditpilot.tools.report_tools import sign_off_memo
+            res = sign_off_memo(decision=decision, reviewer_name="Audit Partner")
+            yield Event(
+                author=self.name,
+                invocation_id=ctx.invocation_id,
+                branch=ctx.branch,
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part.from_text(text=res["notes"])],
+                ),
+            )
+            return
 
         if request_type == "audit":
             async for event in audit_lead.run_async(ctx):
