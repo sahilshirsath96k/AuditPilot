@@ -1,0 +1,34 @@
+# Git and local environments
+.git/
+.gitignore
+.venv/
+.venv_old/
+.agent/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local ADK state and audit history
+auditpilot/.adk/
+audit_trail.jsonl
+*.log
+
+# Tests and evaluation-only data
+tests/
+evals/
+data/ground_truth.csv
+
+# Local development artifacts
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
